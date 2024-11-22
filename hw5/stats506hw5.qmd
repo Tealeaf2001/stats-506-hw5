@@ -1,0 +1,337 @@
+---
+title: "stats506hw5"
+author: "Qichang Wan"
+format:
+  html:
+    code-fold: true
+    code-summary: "Show the code"
+    embed-resources: true
+editor: visual
+---
+
+Link to github: https://github.com/Tealeaf2001/stats-506-hw5.git
+
+## problem1
+### (a)
+```{r,error=TRUE}
+
+setClass(
+  "Rational",
+  slots = list(numerator = "integer", denominator = "integer")
+)
+
+
+setMethod("initialize", "Rational", function(.Object, numerator, denominator) {
+  if (denominator == 0L) stop("Denominator cannot be zero.")
+  .Object@numerator <- numerator
+  .Object@denominator <- denominator
+  validObject(.Object)
+  .Object
+})
+
+
+setValidity("Rational", function(object) {
+  if (object@denominator == 0L) return("Denominator cannot be zero.")
+  TRUE
+})
+
+
+setMethod("show", "Rational", function(object) {
+  cat(sprintf("%d/%d\n", object@numerator, object@denominator))
+})
+
+
+# Define GCD function
+gcd <- function(a, b) {
+  while (b != 0) {
+    temp <- b
+    b <- a %% b
+    a <- temp
+  }
+  abs(a)
+}
+
+# Simplify method
+setGeneric("simplify", function(x) standardGeneric("simplify"))
+setMethod("simplify", "Rational", function(x) {
+  gcd_value <- gcd(x@numerator, x@denominator)
+  new("Rational", numerator = x@numerator / gcd_value, denominator = x@denominator / gcd_value)
+})
+
+
+# Quotient method to return the decimal equivalent
+setGeneric("quotient", function(x, digits = 7) standardGeneric("quotient"))
+setMethod("quotient", "Rational", function(x, digits = 7) {
+  result <- x@numerator / x@denominator
+  print(round(result, digits = digits))
+  result
+})
+
+
+# Addition
+
+setMethod("+", c("Rational", "Rational"), function(e1, e2) {
+  common_denominator <- e1@denominator * e2@denominator
+  num1 <- e1@numerator * e2@denominator
+  num2 <- e2@numerator * e1@denominator
+  result_num <- num1 + num2
+  new("Rational", numerator = result_num, denominator = common_denominator) |> simplify()
+})
+
+# Subtraction
+
+setMethod("-", c("Rational", "Rational"), function(e1, e2) {
+  common_denominator <- e1@denominator * e2@denominator
+  num1 <- e1@numerator * e2@denominator
+  num2 <- e2@numerator * e1@denominator
+  result_num <- num1 - num2
+  new("Rational", numerator = result_num, denominator = common_denominator) |> simplify()
+})
+
+# Multiplication
+
+setMethod("*", c("Rational", "Rational"), function(e1, e2) {
+  result_num <- e1@numerator * e2@numerator
+  result_denom <- e1@denominator * e2@denominator
+  new("Rational", numerator = result_num, denominator = result_denom) |> simplify()
+})
+
+# Division
+
+setMethod("/", c("Rational", "Rational"), function(e1, e2) {
+  if (e2@numerator == 0L) stop("Cannot divide by zero.")
+  result_num <- e1@numerator * e2@denominator
+  result_denom <- e1@denominator * e2@numerator
+  new("Rational", numerator = result_num, denominator = result_denom) |> simplify()
+})
+
+```
+### (b)
+```{r,error=TRUE}
+r1 <- new("Rational", numerator = 24L, denominator = 6L)
+r2 <- new("Rational", numerator = 7L, denominator = 230L)
+r3 <- new("Rational", numerator = 0L, denominator = 4L)
+
+# Display the rational numbers
+r1
+r2
+r3
+```
+
+```{r,error=TRUE}
+r1
+r3
+r1 + r2
+r1 - r2
+r1 * r2
+r1 / r2
+r1 + r3
+r1 * r3
+r2 / r3
+quotient(r1)
+quotient(r2)
+quotient(r2, digits = 3)
+quotient(r2, digits = 3.14)
+quotient(r2, digits = "avocado")
+q2 <- quotient(r2, digits = 3)
+q2
+quotient(r3)
+simplify(r1)
+simplify(r2)
+simplify(r3)
+```
+### (c)
+```{r}
+# Test case: Creating a rational number with denominator = 0
+tryCatch({
+  r_invalid <- new("Rational", numerator = 5L, denominator = 0L)
+}, error = function(e) {
+  cat("Error:", e$message, "\n")
+})
+
+# Test case: Creating a rational number with non-integer numerator
+tryCatch({
+  r_invalid <- new("Rational", numerator = 5.5, denominator = 2L)
+}, error = function(e) {
+  cat("Error:", e$message, "\n")
+})
+
+# Test case: Creating a rational number with non-integer denominator
+tryCatch({
+  r_invalid <- new("Rational", numerator = 5L, denominator = 2.5)
+}, error = function(e) {
+  cat("Error:", e$message, "\n")
+})
+
+
+```
+
+
+## Problem2
+### (a)
+```{r}
+library(plotly)
+library(dplyr)
+art_data <- read.csv("df_for_ml_improved_new_market.csv")
+genre_columns <- grep("Genre", colnames(art_data), value = TRUE)
+
+genre_data <- art_data %>%
+  select(year, all_of(genre_columns)) %>%
+  tidyr::pivot_longer(cols = starts_with("Genre"), names_to = "genre", values_to = "count") %>%
+  filter(count == 1) %>%
+  mutate(genre = gsub("Genre___", "", genre))
+
+fig <- genre_data %>%
+  plot_ly(
+    x = ~year,
+    type = 'histogram',
+    color = ~genre,
+    barmode = 'group'
+  ) %>%
+  layout(
+    title = "Distribution of Art Genres Across Years",
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Frequency"),
+    legend = list(title = list(text = "Art Genre"))
+  )
+
+fig
+
+```
+### (b)
+```{r}
+genre_columns <- grep("Genre", colnames(art_data), value = TRUE)
+
+
+genre_data <- art_data %>%
+  select(year, price_usd, all_of(genre_columns)) %>%
+  tidyr::pivot_longer(cols = starts_with("Genre"), names_to = "genre", values_to = "count") %>%
+  filter(count == 1) %>%
+  mutate(genre = gsub("Genre___", "", genre)) %>%
+  group_by(year, genre) %>%
+  summarise(mean_price_usd = mean(price_usd, na.rm = TRUE), .groups = "drop")
+
+
+overall_trend <- art_data %>%
+  group_by(year) %>%
+  summarise(mean_price_usd = mean(price_usd, na.rm = TRUE), .groups = "drop") %>%
+  mutate(genre = "Overall")
+
+
+combined_data <- bind_rows(genre_data, overall_trend)
+
+
+fig <- combined_data %>%
+  plot_ly(
+    x = ~year,
+    y = ~mean_price_usd,
+    color = ~genre,
+    type = 'scatter',
+    mode = 'lines+markers',
+    hoverinfo = 'text',
+    text = ~paste("Year:", year, "<br>Genre:", genre, "<br>Mean Price (USD):", round(mean_price_usd, 2))
+  ) %>%
+  layout(
+    title = "Change in Sales Price in USD Over Time by Genre",
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Mean Sales Price (USD)"),
+    legend = list(title = list(text = "Art Genre"))
+  )
+
+
+fig
+
+```
+## problem 3
+### a
+```{r}
+library(data.table)
+library(nycflights13)
+library(dplyr) 
+
+
+flights_dt <- as.data.table(flights)
+airports_dt <- as.data.table(airports)
+
+
+departure_delays <- flights_dt[
+  !is.na(dep_delay),                   
+  .(mean_dep_delay = mean(dep_delay, na.rm = TRUE),
+    median_dep_delay = median(dep_delay, na.rm = TRUE),
+    flight_count = .N),
+  by = origin
+][flight_count >= 10]                   
+# Merge with airport names
+departure_delays <- merge(
+  departure_delays,
+  airports_dt[, .(faa, name)],          # Select only the relevant columns
+  by.x = "origin",
+  by.y = "faa"
+)[order(-mean_dep_delay)]               
+
+# Rename columns for clarity
+setnames(departure_delays, c("origin", "name"), c("airport_code", "airport_name"))
+
+# Calculate mean and median arrival delay per airport
+arrival_delays <- flights_dt[
+  !is.na(arr_delay),                    
+  .(mean_arr_delay = mean(arr_delay, na.rm = TRUE),
+    median_arr_delay = median(arr_delay, na.rm = TRUE),
+    flight_count = .N),
+  by = dest
+][flight_count >= 10]                   
+
+# Merge with airport names
+arrival_delays <- merge(
+  arrival_delays,
+  airports_dt[, .(faa, name)],
+  by.x = "dest",
+  by.y = "faa"
+)[order(-mean_arr_delay)]               
+
+# Rename columns for clarity
+setnames(arrival_delays, c("dest", "name"), c("airport_code", "airport_name"))
+
+
+departure_delays_tibble <- as_tibble(departure_delays)
+arrival_delays_tibble <- as_tibble(arrival_delays)
+
+departure_delays_tibble
+arrival_delays_tibble
+```
+### b
+```{r}
+planes_dt <- as.data.table(planes)
+
+
+flights_dt[, air_time_hours := air_time / 60] 
+avg_speed <- flights_dt[
+  !is.na(air_time_hours) & !is.na(distance),   
+  .(average_speed = mean(distance / air_time_hours, na.rm = TRUE),
+    flight_count = .N),
+  by = tailnum
+]
+
+# Merge with planes data to get the aircraft model
+fastest_plane <- merge(
+  avg_speed,
+  planes_dt[, .(tailnum, model)],
+  by = "tailnum",
+  all.x = TRUE
+)
+
+# Find the model with the fastest average speed
+fastest_plane <- fastest_plane[
+  !is.na(average_speed),
+  .SD[which.max(average_speed)]
+]
+
+
+fastest_plane_tibble <- fastest_plane %>%
+  select(model, average_speed, flight_count) %>%
+  as_tibble()
+
+
+fastest_plane_tibble
+```
+
